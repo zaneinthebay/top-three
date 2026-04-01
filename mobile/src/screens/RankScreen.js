@@ -1,35 +1,37 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator
+  View, Text, StyleSheet, TouchableOpacity,
+  TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { ResponsesAPI } from '../api/api';
+import { submitResponse } from '../api/api';
 
-export default function RankScreen() {
-  const navigation = useNavigation();
-  const { params: { prompt } } = useRoute();
+export default function RankScreen({ route, navigation }) {
+  const { prompt } = route.params;
   const [ranks, setRanks] = useState(['', '', '']);
   const [submitting, setSubmitting] = useState(false);
 
-  const setRank = (i, val) => {
-    const next = [...ranks];
-    next[i] = val;
-    setRanks(next);
+  const updateRank = (index, value) => {
+    const updated = [...ranks];
+    updated[index] = value;
+    setRanks(updated);
   };
 
-  const canSubmit = ranks.every((r) => r.trim().length > 0);
-
-  const submit = async () => {
-    if (!canSubmit) return;
+  const handleSubmit = async () => {
+    if (ranks.some(r => !r.trim())) {
+      Alert.alert('Hold on', 'Fill in all three spots before submitting!');
+      return;
+    }
     setSubmitting(true);
     try {
-      const { data } = await ResponsesAPI.submit(
-        prompt.id, ranks[0].trim(), ranks[1].trim(), ranks[2].trim()
-      );
-      navigation.replace('Share', { prompt, response: data.response, shareText: data.shareText });
+      const result = await submitResponse(prompt.id, ranks[0].trim(), ranks[1].trim(), ranks[2].trim());
+      navigation.replace('Share', {
+        prompt,
+        response: result.response,
+        shareText: result.shareText,
+      });
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.error || 'Something went wrong');
+      const msg = err.response?.data?.error || 'Something went wrong';
+      Alert.alert('Error', msg);
     } finally {
       setSubmitting(false);
     }
@@ -40,72 +42,76 @@ export default function RankScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.emoji}>{prompt.emoji || '🏆'}</Text>
-        <Text style={styles.promptText}>{prompt.full_text}</Text>
-      </View>
+      <View style={styles.content}>
+        {/* Prompt */}
+        <View style={styles.promptHeader}>
+          <Text style={styles.emoji}>{prompt.emoji || '🏆'}</Text>
+          <Text style={styles.promptText}>{prompt.full_text}</Text>
+        </View>
 
-      {/* Rank inputs */}
-      <View style={styles.inputs}>
-        {[0, 1, 2].map((i) => (
-          <View key={i} style={styles.inputRow}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{['🥇', '🥈', '🥉'][i]}</Text>
+        {/* Rank inputs */}
+        <View style={styles.rankList}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={styles.rankRow}>
+              <View style={styles.rankBadge}>
+                <Text style={styles.rankNumber}>{i + 1}</Text>
+              </View>
+              <TextInput
+                style={styles.rankInput}
+                placeholder={i === 0 ? 'Your top pick...' : i === 1 ? 'Second best...' : 'Third place...'}
+                placeholderTextColor="#BBB"
+                value={ranks[i]}
+                onChangeText={(v) => updateRank(i, v)}
+                returnKeyType={i < 2 ? 'next' : 'done'}
+                autoCapitalize="words"
+              />
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder={`Your #${i + 1} pick`}
-              value={ranks[i]}
-              onChangeText={(v) => setRank(i, v)}
-              autoFocus={i === 0}
-              returnKeyType={i < 2 ? 'next' : 'done'}
-              maxLength={60}
-            />
-          </View>
-        ))}
+          ))}
+        </View>
+
+        <Text style={styles.hint}>Be honest — your friends will see this! 😅</Text>
+
+        <TouchableOpacity
+          style={[styles.submitButton, submitting && styles.submitDisabled]}
+          onPress={handleSubmit}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.submitText}>Submit My Top 3 🚀</Text>
+          )}
+        </TouchableOpacity>
       </View>
-
-      {/* Hint */}
-      <Text style={styles.hint}>Submit to see what your friends picked 👀</Text>
-
-      {/* Submit */}
-      <TouchableOpacity
-        style={[styles.submitButton, !canSubmit && styles.submitDisabled]}
-        onPress={submit}
-        disabled={!canSubmit || submitting}
-      >
-        {submitting
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={styles.submitText}>Lock in my picks 🔒</Text>
-        }
-      </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF8', padding: 24 },
-  header: { alignItems: 'center', marginBottom: 32, marginTop: 16 },
-  emoji: { fontSize: 52, marginBottom: 10 },
-  promptText: { fontSize: 22, fontWeight: '700', textAlign: 'center', color: '#1A1A1A' },
-  inputs: { gap: 14 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  badge: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4,
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  content: { flex: 1, padding: 24, paddingTop: 48 },
+  promptHeader: { alignItems: 'center', marginBottom: 36 },
+  emoji: { fontSize: 56, marginBottom: 12 },
+  promptText: { fontSize: 22, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', lineHeight: 30 },
+  rankList: { marginBottom: 20 },
+  rankRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#FFF', borderRadius: 14, marginBottom: 12,
+    padding: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
-  badgeText: { fontSize: 22 },
-  input: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 14,
-    fontSize: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6,
+  rankBadge: {
+    width: 44, height: 44, borderRadius: 10,
+    backgroundColor: '#FF6B35', justifyContent: 'center', alignItems: 'center', marginLeft: 4,
   },
-  hint: { textAlign: 'center', color: '#999', fontSize: 13, marginTop: 24 },
+  rankNumber: { fontSize: 18, fontWeight: '800', color: '#FFF' },
+  rankInput: { flex: 1, fontSize: 16, color: '#1A1A1A', paddingHorizontal: 16, paddingVertical: 14 },
+  hint: { fontSize: 13, color: '#AAA', textAlign: 'center', marginBottom: 28 },
   submitButton: {
-    backgroundColor: '#FF6B35', borderRadius: 16, padding: 18,
-    alignItems: 'center', marginTop: 20,
+    backgroundColor: '#FF6B35', borderRadius: 16, padding: 18, alignItems: 'center',
+    shadowColor: '#FF6B35', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
   },
-  submitDisabled: { backgroundColor: '#ccc' },
-  submitText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  submitDisabled: { opacity: 0.6 },
+  submitText: { fontSize: 17, fontWeight: '700', color: '#FFF' },
 });

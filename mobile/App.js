@@ -2,18 +2,20 @@ import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
-
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import RankScreen from './src/screens/RankScreen';
 import ShareScreen from './src/screens/ShareScreen';
+import FriendsScreen from './src/screens/FriendsScreen';
 
+// Handle push notifications when app is foregrounded
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: true,
+    shouldSetBadge: false,
   }),
 });
 
@@ -27,8 +29,9 @@ function AppNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#FAFAF8' },
-        headerTintColor: '#1A1A1A',
+        headerStyle: { backgroundColor: '#FAFAFA' },
+        headerTintColor: '#FF6B35',
+        headerTitleStyle: { fontWeight: '700' },
         headerShadowVisible: false,
       }}
     >
@@ -36,21 +39,10 @@ function AppNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
       ) : (
         <>
-          <Stack.Screen
-            name="Home"
-            component={HomeScreen}
-            options={{ title: 'Top Three', headerLargeTitle: true }}
-          />
-          <Stack.Screen
-            name="Rank"
-            component={RankScreen}
-            options={{ title: 'Your picks', presentation: 'modal' }}
-          />
-          <Stack.Screen
-            name="Share"
-            component={ShareScreen}
-            options={{ title: '', presentation: 'modal', headerShown: false }}
-          />
+          <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Top Three', headerLargeTitle: true }} />
+          <Stack.Screen name="Rank" component={RankScreen} options={{ title: 'Your Picks' }} />
+          <Stack.Screen name="Share" component={ShareScreen} options={{ title: 'Done!', headerBackVisible: false }} />
+          <Stack.Screen name="Friends" component={FriendsScreen} options={{ title: 'Friends\' Lists' }} />
         </>
       )}
     </Stack.Navigator>
@@ -58,12 +50,11 @@ function AppNavigator() {
 }
 
 export default function App() {
-  // Handle notification taps — deep link to Rank screen
   useEffect(() => {
+    // Listen for notification taps — navigate to today's prompt
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const { promptId } = response.notification.request.content.data || {};
-      // Navigation ref could be used here for deep linking
-      console.log('Notification tapped, promptId:', promptId);
+      // Navigation from notification taps can be wired up here
+      console.log('Notification tapped:', response.notification.request.content.data);
     });
     return () => sub.remove();
   }, []);

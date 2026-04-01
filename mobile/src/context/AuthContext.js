@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import * as Facebook from 'expo-facebook';
 import * as Notifications from 'expo-notifications';
-import { AuthAPI } from '../api/api';
+import { loginWithFacebook, updatePushToken } from '../api/api';
 
 const AuthContext = createContext(null);
 
@@ -11,23 +11,19 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
+    // Restore session on launch
     (async () => {
-      const token = await SecureStore.getItemAsync('auth_token');
-      if (token) {
-        try {
-          const { data } = await AuthAPI.getMe();
-          setUser(data);
-        } catch {
-          await SecureStore.deleteItemAsync('auth_token');
-        }
-      }
+      try {
+        const token = await SecureStore.getItemAsync('authToken');
+        const userJson = await SecureStore.getItemAsync('user');
+        if (token && userJson) setUser(JSON.parse(userJson));
+      } catch {}
       setLoading(false);
     })();
   }, []);
 
-  const loginWithFacebook = async () => {
-    await Facebook.initializeAsync({ appId: 'YOUR_FACEBOOK_APP_ID' });
+  const signIn = async () => {
+    await Facebook.initializeAsync({ appId: process.env.EXPO_PUBLIC_FACEBOOK_APP_ID });
     const result = await Facebook.logInWithReadPermissionsAsync({
       permissions: ['public_profile', 'user_friends'],
     });
@@ -44,20 +40,22 @@ export function AuthProvider({ children }) {
       }
     } catch {}
 
-    const { data } = await AuthAPI.loginWithFacebook(result.token, expoPushToken);
-    await SecureStore.setItemAsync('auth_token', data.token);
-    setUser(data.user);
-    return data.user;
+    const { token, user: userData } = await loginWithFacebook(result.token, expoPushToken);
+
+    await SecureStore.setItemAsync('authToken', token);
+    await SecureStore.setItemAsync('user', JSON.stringify(userData));
+    setUser(userData);
   };
 
-  const logout = async () => {
-    await SecureStore.deleteItemAsync('auth_token');
+  const signOut = async () => {
     await Facebook.logOutAsync();
+    await SecureStore.deleteItemAsync('authToken');
+    await SecureStore.deleteItemAsync('user');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithFacebook, logout }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

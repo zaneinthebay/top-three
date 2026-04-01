@@ -2,78 +2,86 @@ import React from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Share, Alert
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
 
-export default function ShareScreen() {
-  const navigation = useNavigation();
-  const { params: { prompt, response, shareText: propShareText } } = useRoute();
-
-  const shareText = propShareText || (
-    `${prompt.emoji || '🏆'} My top 3 ${prompt.text}:\n` +
-    `1. ${response.rank1}\n` +
-    `2. ${response.rank2}\n` +
-    `3. ${response.rank3}\n\n` +
-    `What are yours? Submit to see mine 👇\n` +
-    `https://topthree.app/share/${response.share_token}`
-  );
+export default function ShareScreen({ route, navigation }) {
+  const { prompt, response, shareText } = route.params;
 
   const handleShare = async () => {
     try {
-      await Share.share({ message: shareText });
+      await Share.share({
+        message: shareText,
+        title: `My Top 3 ${prompt.text}`,
+      });
     } catch (err) {
-      Alert.alert('Error', 'Could not open share sheet');
+      Alert.alert('Error', 'Could not share');
     }
+  };
+
+  const handleSeeFriends = () => {
+    navigation.replace('Friends', { promptId: prompt.id, prompt });
   };
 
   return (
     <View style={styles.container}>
-      {/* Share card */}
+      <Text style={styles.title}>Your list is in! {prompt.emoji}</Text>
+
+      {/* Result card */}
       <View style={styles.card}>
-        <Text style={styles.emoji}>{prompt.emoji || '🏆'}</Text>
-        <Text style={styles.topLabel}>My top 3 {prompt.text}</Text>
-        <View style={styles.picks}>
-          <Text style={styles.pick}>🥇 {response.rank1}</Text>
-          <Text style={styles.pick}>🥈 {response.rank2}</Text>
-          <Text style={styles.pick}>🥉 {response.rank3}</Text>
-        </View>
-        <Text style={styles.cta}>Submit yours to see mine 👇</Text>
-        <Text style={styles.url}>topthree.app</Text>
+        <Text style={styles.cardTitle}>My Top 3 {prompt.text}</Text>
+        {[response.rank1, response.rank2, response.rank3].map((item, i) => (
+          <View key={i} style={styles.rankRow}>
+            <View style={[styles.badge, i === 0 && styles.badge1, i === 1 && styles.badge2, i === 2 && styles.badge3]}>
+              <Text style={styles.badgeText}>{i + 1}</Text>
+            </View>
+            <Text style={styles.rankItem}>{item}</Text>
+          </View>
+        ))}
       </View>
 
-      {/* Actions */}
+      {/* Share prompt */}
+      <Text style={styles.sharePrompt}>
+        Share with friends so they can see yours — but only after they submit theirs 😏
+      </Text>
+
       <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-        <Text style={styles.shareButtonText}>Share with friends 📤</Text>
+        <Text style={styles.shareButtonText}>Share My List 📤</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.seeFriendsButton}
-        onPress={() => navigation.replace('Home')}
-      >
-        <Text style={styles.seeFriendsText}>See friends' picks →</Text>
+      <TouchableOpacity style={styles.friendsButton} onPress={handleSeeFriends}>
+        <Text style={styles.friendsButtonText}>See Friends' Lists →</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF8', padding: 24, alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: '#FAFAFA', padding: 24, paddingTop: 60 },
+  title: { fontSize: 26, fontWeight: '800', color: '#1A1A1A', textAlign: 'center', marginBottom: 28 },
   card: {
-    backgroundColor: '#FF6B35', borderRadius: 24, padding: 32,
-    alignItems: 'center', width: '100%', marginBottom: 24,
+    backgroundColor: '#FFF', borderRadius: 20, padding: 24,
+    marginBottom: 24, shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
   },
-  emoji: { fontSize: 56, marginBottom: 8 },
-  topLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8 },
-  picks: { marginTop: 16, width: '100%', gap: 8 },
-  pick: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  cta: { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginTop: 20 },
-  url: { color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 4 },
+  cardTitle: { fontSize: 16, fontWeight: '600', color: '#888', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 0.5 },
+  rankRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  badge: {
+    width: 32, height: 32, borderRadius: 8, justifyContent: 'center',
+    alignItems: 'center', marginRight: 14, backgroundColor: '#EEE',
+  },
+  badge1: { backgroundColor: '#FFD700' },
+  badge2: { backgroundColor: '#C0C0C0' },
+  badge3: { backgroundColor: '#CD7F32' },
+  badgeText: { fontWeight: '800', fontSize: 14, color: '#FFF' },
+  rankItem: { fontSize: 18, fontWeight: '600', color: '#1A1A1A', flex: 1 },
+  sharePrompt: { fontSize: 15, color: '#666', textAlign: 'center', lineHeight: 22, marginBottom: 20 },
   shareButton: {
-    backgroundColor: '#1A1A1A', borderRadius: 16, padding: 18,
-    width: '100%', alignItems: 'center', marginBottom: 12,
+    backgroundColor: '#FF6B35', borderRadius: 16, padding: 18,
+    alignItems: 'center', marginBottom: 12,
   },
-  shareButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  seeFriendsButton: {
-    borderRadius: 16, padding: 16, width: '100%', alignItems: 'center',
+  shareButtonText: { fontSize: 17, fontWeight: '700', color: '#FFF' },
+  friendsButton: {
+    backgroundColor: '#FFF', borderRadius: 16, padding: 18,
+    alignItems: 'center', borderWidth: 1.5, borderColor: '#FF6B35',
   },
-  seeFriendsText: { color: '#FF6B35', fontSize: 16, fontWeight: '600' },
+  friendsButtonText: { fontSize: 17, fontWeight: '700', color: '#FF6B35' },
 });

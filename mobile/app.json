@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FF6B35"
     },
     "ios": {
       "supportsTablet": false,
@@ -18,28 +18,27 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#FF6B35"
       },
       "package": "com.topthree.app"
     },
     "plugins": [
       [
-        "expo-notifications",
+        "expo-facebook",
         {
-          "icon": "./assets/notification-icon.png",
-          "color": "#FF6B35"
+          "userTrackingPermission": "This app uses Facebook to connect with your friends."
         }
       ],
       [
-        "expo-facebook",
+        "expo-notifications",
         {
-          "appId": "YOUR_FACEBOOK_APP_ID",
-          "displayName": "Top Three"
+          "icon": "./assets/notification-icon.png",
+          "color": "#FF6B35",
+          "sounds": []
         }
       ]
     ],
-    "extra": {
-      "apiBaseUrl": "http://localhost:3000"
-    }
+    "facebookAppId": "YOUR_FACEBOOK_APP_ID",
+    "facebookDisplayName": "Top Three"
   }
 }
